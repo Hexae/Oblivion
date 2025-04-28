@@ -1,0 +1,160 @@
+import disnake
+from disnake.ext import commands, tasks
+import aiohttp
+import json
+import datetime
+from datetime import timezone
+
+intents = disnake.Intents.default()
+intents.message_content = True
+
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+# Channel and message tracking
+CHANNEL_ID = 
+embed_message_id = 
+
+# Servers you want to track (IP:Port)
+MY_SERVERS = {
+    "24.201.233.119:7010",
+    "24.201.233.119:5010",
+    "24.201.233.119:5011",
+    "24.201.233.119:5012",
+    "24.201.233.119:6010",
+}
+
+# Server list API endpoints
+SERVER_LIST_URLS = [
+    "https://l11-prod-list-moegame.angelagame.com/GameServerList_BigPrivate.json",
+    "https://l11-prod-list-moegame.angelagame.com/GameServerList_Private.json",
+    "https://l11-prod-list-moegame.angelagame.com/GameServerList_Listen.json",
+]
+
+# Custom names with emoji
+SERVER_NAMES = {
+    "24.201.233.119:7010": "Oblivion - Lobby",
+    "24.201.233.119:5010": "<:dongzhou:1365036016309768213>Dongzhou",
+    "24.201.233.119:5011": "<:xizhou:1365036067161374860>Xizhou",
+    "24.201.233.119:5012": "<:zhongzhou:1365035741926658189>Zhongzhou",
+    "24.201.233.119:6010": "⚔️ Prefecture and Fortress Battlefield",
+}
+
+SERVER_DESCRIPTIONS = {
+    "24.201.233.119:7010": " ",
+    "24.201.233.119:5010": "Main Map (DLC)",
+    "24.201.233.119:5011": "Desertic Map (DLC)",
+    "24.201.233.119:5012": "Legacy Map (No DLC Required)",
+    "24.201.233.119:6010": "Battlefield's Server",
+}
+
+# Display sort order based on plain name
+SERVER_DISPLAY_ORDER = {
+    "Oblivion - Lobby": 1,
+    "Dongzhou": 2,
+    "Xizhou": 3,
+    "Zhongzhou": 4,
+    "Prefecture and Fortress Battlefield": 5,
+}
+
+def get_mode_from_type(server_type):
+    if server_type == "1":
+        return "PVP"
+    elif server_type == "2":
+        return "PVE"
+    return "Unknown"
+
+def clean_base_name(name):
+    # Strip emoji if present for sorting
+    return name.split(">")[-1] if name.startswith("<:") else name
+
+async def get_server_data():
+    servers_data = []
+    async with aiohttp.ClientSession() as session:
+        for url in SERVER_LIST_URLS:
+            try:
+                async with session.get(url) as resp:
+                    data = await resp.json(content_type=None)
+                    for server in data.get("server_list", []):
+                        ip = server.get("addr", "")
+                        port = str(server.get("port", ""))
+                        address = f"{ip}:{port}"
+
+                        if address in MY_SERVERS:
+                            try:
+                                custom_info_str = server.get("custom_info", "{}")
+                                custom_info = json.loads(custom_info_str)
+
+                                players = int(custom_info.get("trueplayers", 0))
+                                server_type = str(server.get("type", "Unknown"))
+                                mode = get_mode_from_type(server_type)
+
+                                server_name = SERVER_NAMES.get(address, address)
+                                server_description = SERVER_DESCRIPTIONS.get(address, "No description available")
+
+                                servers_data.append({
+                                    "address": address,
+                                    "base_name": server_name,
+                                    "name": f"{server_name} ({mode})",
+                                    "players": players,
+                                    "description": server_description
+                                })
+                            except Exception as e:
+                                print(f"Failed to process server {address}: {e}")
+            except Exception as e:
+                print(f"Error fetching {url}: {e}")
+    return servers_data
+
+@bot.event
+async def on_ready():
+    print(f"Bot connected as {bot.user}")
+    update_embed_and_status.start()
+
+@tasks.loop(seconds=30)
+async def update_embed_and_status():
+    global embed_message_id
+
+    servers_data = await get_server_data()
+    total_players = sum(server['players'] for server in servers_data)
+
+    # Update bot presence
+    await bot.change_presence(activity=disnake.Game(name=f"{total_players} players online"))
+
+    # Build the embed
+    embed = disnake.Embed(
+        title="🌍 **Oblivion - Server Status**",
+        description="_LIVE EVENT: Weekend Bonus XP 50%_",
+        color=disnake.Color.gold(),
+        timestamp=datetime.datetime.now(tz=timezone.utc)
+    )
+
+    # Sort and add fields
+    servers_data.sort(key=lambda s: SERVER_DISPLAY_ORDER.get(clean_base_name(s["base_name"]), 999))
+    for server in servers_data:
+        embed.add_field(
+            name=server["name"],
+            value=f"Players: {server['players']}\n{server['description']}",
+            inline=False
+        )
+
+    embed.set_footer(text="Last updated")
+
+    # Send or edit the embed message
+    channel = bot.get_channel(CHANNEL_ID)
+    if not channel:
+        print(f"Could not find channel with ID {CHANNEL_ID}")
+        return
+
+    try:
+        embed_message = await channel.fetch_message(embed_message_id)
+        await embed_message.edit(embed=embed)
+    except disnake.NotFound:
+        print(f"Message with ID {embed_message_id} not found. Sending a new one.")
+        embed_message = await channel.send(embed=embed)
+        embed_message_id = embed_message.id
+
+@bot.command()
+async def server_status(ctx):
+    await update_embed_and_status()
+
+# 🔐 Replace with your actual bot token
+bot.run("")
