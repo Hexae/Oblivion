@@ -1,0 +1,14 @@
+Connect to your Redis with Another Redis Desktop Manager
+Look up for missing files in chat:g:g:ID
+Open the console (via the application; icon = '' >_ '' )
+
+Add your missing GroupID (you can find the missing GroupID when someone enters the server > red logs)
+  -> Enter following command in console: SADD chat:g:u:GroupID ServerID-> ex. SADD chat:g:u:135f6bc69ab2000 50002
+
+Set the right groupID to the server-> Enter following command in console:
+  -> SET chat:g:g:GroupID"{"ID":"GroupID","Name":"ncDCO7UHJzO9","Pwd":"","GroupType":10,"Avatra":"","ManagerID":"ServerID","Notification":"","Introduction":"","Members":null}"
+   -> ex. SET chat:g:g:135f6bc69ab2000 "{"ID":"135f6bc69ab2000","Name":"ncDCO7UHJzO9","Pwd":"","GroupType":10,"Avatra":"","ManagerID":"50002","Notification":"","Introduction":"","Members":null}"
+
+There are ncDCO7UHJzO7, ncDCO7UHJzO8 and ncDCO7UHJzO9 use one per group id (ex. nearby, guild and county)
+Source: https://github.com/TimoVanTomitti/useful/wiki/MoE-Chatfixes#en
+*Fixed improper use of syntax in his code and made it simplier*
