@@ -25,11 +25,11 @@ This project is a real-time leaderboard and player tracking system designed for 
 
 ---
 
-## 📷 Screenshots
+## 📷 Screenshots/Videos
 
-Coming soon...
+https://github.com/user-attachments/assets/7a989f0e-9199-4d4f-8bf3-28ca0df80ffd
 
----
+
 
 ## 📜 License
 
